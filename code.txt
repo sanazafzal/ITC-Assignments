@@ -1,0 +1,36 @@
+Extract for float a
+3318     Bitwise AND: R3 = R1 & R8       (Mask Exponent using 0x7C00 in R8)
+6339     Shift Right: R3 = R3 >> R9      (Shift right by 10 slots using R9=10)
+351A     Bitwise AND: R5 = R1 & RA       (Mask Mantissa using 0x03FF in RA)
+155B     ADD:R5 = R5 + RB       (Restore Hidden Bit by adding 0x0400 in RB)
+
+Extract Float B 
+3428     Bitwise AND: R4 = R2 & R8       (Mask Exponent)
+6449    Shift Right: R4 = R4 >> R9      (Shift right by 10)
+362A    Bitwise AND: R6 = R2 & RA       (Mask Mantissa)
+166B     ADD: R6 = R6 + RB       (Restore Hidden Bit)
+
+Calculate Exponent Difference
+2734  Subtract: R7 = R3 - R4    (diff = expA - expB)
+D713   Branch Pos:  If R7 > 0, jump to ALIGN_B (Skip to address 0x13)
+
+If diff <= 0, ExpB is bigger (Shift mantA right)
+2707     Subtract:    R7 = 0 - R7        (Get absolute value of negative diff)
+6557     Shift Right: R5 = R5 >> R7      (Shift mantA right by diff)
+1340    ADD:         R3 = R4 + R0       (Set final exponent to expB)
+C014     Branch Zero: Force jump past ALIGN_B down to ARITHMETIC (address 0x14)
+
+ALIGN_B (Address 0x13): ExpA is bigger (Shift mantB right) 
+6667    Shift Right: R6 = R6 >> R7      (Shift mantB right by diff)
+
+1556    ADD:R5 = R5 + R6       (sum_mant = mantA + mantB)
+
+375C    Bitwise AND: R7 = R5 & RC       (Check bit 11 overflow using 0x0800 in RC)
+C719    Branch Zero: If R7 == 0 (no overflow), jump to PACKING (address 0x19)
+655D    Shift Right: R5 = R5 >> RD      (Correct overflow: shift right by RD=1)
+133D    ADD:R3 = R3 + RD      (Increment final exponent scale by 1)
+
+355A    Bitwise AND: R5 = R5 & RA       (Strip the hidden bit off using 0x03FF in RA)
+5339    Shift Left:  R3 = R3 << R9      (Shift final exponent left by 10 back into place)
+1135     ADD:R1 = R3 + R5   (Merge exponent and fraction fields into R1)
+
